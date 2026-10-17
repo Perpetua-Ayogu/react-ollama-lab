@@ -4,21 +4,35 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
 export default function OllamaChat() {
-  // TODO: Add state for input, messages, loading, and error.
+  const [input, setInput] = useState("");
+  const [messages, setMessages] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
   const handleAsk = async () => {
-    // TODO: Prevent empty submissions and duplicate submissions while loading.
-    // TODO: Create a user message object.
-    // TODO: Add the user message to the message thread.
-    // TODO: Clear the input, reset errors, and turn loading on.
-    // TODO: Call Ollama.chat with model "llama3.2" and the updated message history.
-    // TODO: Add the assistant response to the message thread.
-    // TODO: Show a helpful error if the request fails.
-    // TODO: Turn loading off after success or failure.
+    const question = input.trim();
+    if (!question || loading) return;
+
+    const nextMessages = [...messages, { role: "user", content: question }];
+    setMessages(nextMessages);
+    setInput("");
+    setError("");
+    setLoading(true);
+
+    try {
+      const response = await Ollama.chat({ model: "llama3.2", messages: nextMessages });
+      setMessages([...nextMessages, response.message]);
+    } catch {
+      setError("Failed to get response from Ollama.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const clearChat = () => {
-    // TODO: Clear messages, input, and error.
+    setMessages([]);
+    setInput("");
+    setError("");
   };
 
   return (
@@ -40,24 +54,37 @@ export default function OllamaChat() {
           <label htmlFor="chat-prompt" className="sr-only">
             Ask the HR assistant
           </label>
-          {/* TODO: Set up textarea */}
           <textarea
             id="chat-prompt"
             rows="5"
             className="chat-textarea"
             placeholder="Ask about benefits, PTO, or workplace policies..."
+            value={input}
+            onChange={(event) => setInput(event.target.value)}
           />
         </div>
 
-        {/* TODO: Configure buttons */}
         <div className="chat-actions">
-          <button className="chat-button">Send</button>
-          <button className="chat-button chat-button-secondary">Clear thread</button>
+          <button className="chat-button" onClick={handleAsk} disabled={!input.trim() || loading}>Send</button>
+          <button className="chat-button chat-button-secondary" onClick={clearChat} disabled={messages.length === 0 || loading}>Clear thread</button>
         </div>
 
+        {error && <p className="chat-error" role="alert">{error}</p>}
         <div className="message-list" aria-label="Conversation thread">
-          {/* TODO: Render user and assistant messages here. */}
-          {/* TODO: Render a temporary Assistant / Thinking... message while loading. */}
+          {messages.map((message, index) => (
+            <article className={`message message-${message.role}`} key={index}>
+              <div className="message-label">{message.role === "user" ? "You" : "Assistant"}</div>
+              <div className="markdown-body">
+                <ReactMarkdown remarkPlugins={[remarkGfm]}>{message.content}</ReactMarkdown>
+              </div>
+            </article>
+          ))}
+          {loading && (
+            <article className="message message-assistant">
+              <div className="message-label">Assistant</div>
+              <div>Thinking...</div>
+            </article>
+          )}
         </div>
       </div>
     </section>
